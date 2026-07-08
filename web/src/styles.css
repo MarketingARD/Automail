@@ -1,0 +1,274 @@
+/* ── Automail — design system dérivé de la charte "alex steies v2" ──
+   Paper / Cloud / Ink / Screen black + aurora en halo (jamais en aplat).
+   Hanken Grotesk partout. Angles vifs, pas de border-radius. */
+
+:root {
+  --paper: #e9e8e4;
+  --cloud: #f3f2ee;
+  --ink: #141513;
+  --black: #020202;
+  --offwhite: #f1f0ec;
+  --gray: #8b8a85;
+  --gray-dark: #5c5b57;
+  --gray-onblack: #9c9b96;
+  --border: #c6c5c0;
+  --border-soft: #d2d1cc;
+  --a1: #f6a98c;
+  --a2: #e289bc;
+  --a3: #7b68d8;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  font-family: 'Hanken Grotesk', system-ui, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+::selection { background: var(--ink); color: var(--paper); }
+
+a { color: inherit; text-decoration: none; }
+a:hover { opacity: 0.6; }
+
+button {
+  font-family: inherit;
+  font-size: 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+}
+
+input, textarea, select {
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--cloud);
+  border: 1px solid var(--border-soft);
+  padding: 9px 12px;
+  outline: none;
+  border-radius: 0;
+}
+input:focus, textarea:focus, select:focus { border-color: var(--ink); }
+input::placeholder, textarea::placeholder { color: var(--gray); }
+
+/* ── Boutons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: var(--ink);
+  color: var(--offwhite);
+  font-weight: 600;
+  font-size: 14px;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.btn:hover { opacity: 0.82; }
+.btn:disabled { opacity: 0.35; cursor: default; }
+.btn-ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--border);
+  font-weight: 400;
+}
+.btn-ghost:hover { border-color: var(--ink); opacity: 1; }
+.btn-small { padding: 6px 12px; font-size: 13px; }
+.btn-danger { background: transparent; border: 1px solid var(--border); color: var(--gray-dark); font-weight: 400; }
+.btn-danger:hover { border-color: #b3554e; color: #b3554e; opacity: 1; }
+
+/* ── Tags — le seul uppercase autorisé ── */
+.tag {
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gray);
+  font-weight: 400;
+}
+
+/* ── Chiffres — Thin 200, tabulaires ── */
+.stat-num {
+  font-weight: 200;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+/* ── Cartes ── */
+.card { background: var(--cloud); border: 1px solid var(--border-soft); }
+.card-black { background: var(--black); color: var(--offwhite); border: 1px solid var(--black); position: relative; overflow: hidden; }
+
+/* halo aurora — uniquement sur fond noir */
+.aurora-glow {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 38%, var(--a1) 0%, transparent 58%),
+    radial-gradient(circle at 68% 55%, var(--a2) 0%, transparent 55%),
+    radial-gradient(circle at 46% 82%, var(--a3) 0%, transparent 62%);
+  filter: blur(70px);
+  opacity: 0.75;
+}
+
+/* ── Layout ── */
+.app { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 232px;
+  flex-shrink: 0;
+  background: var(--black);
+  color: var(--offwhite);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+.sidebar nav { position: relative; z-index: 1; display: flex; flex-direction: column; flex: 1; }
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 24px;
+  color: var(--gray-onblack);
+  font-size: 14.5px;
+  transition: color 0.15s;
+}
+.nav-link:hover { color: var(--offwhite); opacity: 1; }
+.nav-link.active { color: var(--offwhite); font-weight: 600; }
+.nav-link .count {
+  font-weight: 200;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--gray-onblack);
+}
+.nav-link.active .count { color: var(--a1); }
+
+.main { flex: 1; min-width: 0; }
+.page { max-width: 1180px; margin: 0 auto; padding: 44px 48px 80px; }
+
+.page-head { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 28px; margin-bottom: 36px; }
+.page-head h1 {
+  font-weight: 400;
+  font-size: clamp(26px, 2.6vw, 36px);
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+}
+.accent-dot { font-weight: 600; }
+
+/* ── Liste de mails ── */
+.mail-row {
+  display: grid;
+  grid-template-columns: 34px 200px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--cloud);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.mail-row:hover { background: #edece8; }
+.mail-row.unread .mail-subject { font-weight: 600; }
+.mail-row.selected { background: #e2e1db; }
+.mail-from { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mail-subject { font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mail-snippet { color: var(--gray); font-weight: 400; }
+.mail-meta { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--gray); white-space: nowrap; }
+
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  cursor: pointer;
+  background: transparent;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.chip:hover { border-color: var(--ink); }
+.chip.on { background: var(--ink); color: var(--offwhite); border-color: var(--ink); }
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--border);
+  background: var(--cloud);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 11px;
+}
+.checkbox.on { background: var(--ink); color: var(--offwhite); border-color: var(--ink); }
+
+/* ── Tableaux réglages ── */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 13px; color: var(--gray-dark); }
+
+.toggle {
+  width: 40px; height: 22px; border: 1px solid var(--border); background: var(--cloud);
+  position: relative; cursor: pointer; flex-shrink: 0; transition: background .15s;
+}
+.toggle::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+  background: var(--gray); transition: all .15s;
+}
+.toggle.on { background: var(--ink); border-color: var(--ink); }
+.toggle.on::after { left: 20px; background: var(--offwhite); }
+
+/* ── Divers ── */
+.empty {
+  padding: 72px 24px;
+  text-align: center;
+  color: var(--gray);
+  border: 1px dashed var(--border);
+}
+.hr { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--black);
+  color: var(--offwhite);
+  padding: 13px 20px;
+  font-size: 14px;
+  z-index: 100;
+  max-width: 420px;
+  box-shadow: 0 8px 30px rgba(2, 2, 2, 0.25);
+}
+.toast .tag { color: var(--gray-onblack); }
+
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.loading { animation: pulse 1.2s ease-in-out infinite; color: var(--gray); }
+
+/* mail body */
+.mail-body { font-size: 15px; line-height: 1.65; color: var(--ink); white-space: pre-wrap; word-break: break-word; }
+.mail-body-html { font-size: 14px; line-height: 1.6; overflow-x: auto; }
+.mail-body-html img { max-width: 100%; height: auto; }
+
+@media (max-width: 900px) {
+  .app { flex-direction: column; }
+  .sidebar { width: 100%; height: auto; position: static; flex-direction: row; align-items: center; }
+  .sidebar nav { flex-direction: row; overflow-x: auto; }
+  .page { padding: 24px 20px 60px; }
+  .page-head { grid-template-columns: 1fr; gap: 8px; }
+  .mail-row { grid-template-columns: 24px minmax(0, 1fr) auto; }
+  .mail-from { display: none; }
+}
