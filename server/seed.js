@@ -1,5 +1,6 @@
 // Données de démonstration — trois boîtes, trois clients, ~50 mails réalistes.
 // Usage : npm run seed   (réinitialise la base)
+process.env.AUTOMAIL_SEED = '1'; // triage heuristique uniquement, aucun appel IA réel
 import { db } from './db.js';
 import { processMessage } from './pipeline.js';
 

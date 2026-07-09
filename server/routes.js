@@ -4,7 +4,11 @@ import { syncAccount, deleteRemote, testConnection } from './imap.js';
 import { sendReply } from './smtp.js';
 import { processMessage, processPending } from './pipeline.js';
 import { learnFromOverride } from './ai/heuristics.js';
-import { aiDraftReply, aiAvailable, resolveEngine, claudeCliProbe } from './ai/engine.js';
+import { aiDraftReply, aiAvailable, chainStatus, claudeCliProbe } from './ai/engine.js';
+import * as providers from './ai/providers.js';
+import * as openaiCompat from './ai/openai-compat.js';
+import * as anthropicAdapter from './ai/claude.js';
+import * as subscriptionAdapter from './ai/claudecode.js';
 import { search, contextFor, ragStats, indexMessage, removeFromIndex, matchClient } from './ai/rag.js';
 import { createTask, hierarchy, clickupConfigured } from './clickup.js';
 
@@ -51,7 +55,7 @@ api.get('/stats', async (req, res) => {
     rag: ragStats(),
     ragUnique,
     ai: await aiAvailable(),
-    aiEngine: await resolveEngine(),
+    aiChain: await chainStatus(),
     clickup: clickupConfigured(),
   });
 });
@@ -449,24 +453,77 @@ api.get('/rag/stats', (req, res) => ok(res, { stats: ragStats() }));
 
 // ───────────────────────── Réglages ─────────────────────────
 const SETTING_KEYS = [
-  'ai_engine', 'anthropic_key', 'classify_model', 'draft_model', 'ai_triage',
-  'clickup_token', 'clickup_list_id', 'clickup_list_name', 'user_name',
+  'ai_triage', 'clickup_token', 'clickup_list_id', 'clickup_list_name', 'user_name',
 ];
 
-api.get('/settings', async (req, res) => {
+api.get('/settings', (req, res) => {
   const out = {};
   for (const k of SETTING_KEYS) out[k] = getSetting(k, '');
-  if (!out.ai_engine) out.ai_engine = 'subscription';
-  // ne jamais renvoyer les secrets en clair
-  out.anthropic_key = out.anthropic_key ? '••••' + out.anthropic_key.slice(-4) : '';
   out.clickup_token = out.clickup_token ? '••••' + out.clickup_token.slice(-4) : '';
-  out.env_anthropic = Boolean(process.env.ANTHROPIC_API_KEY);
   out.env_clickup = Boolean(process.env.CLICKUP_TOKEN);
-  const probe = await claudeCliProbe(Boolean(req.query.reprobe));
-  out.claude_cli_ok = probe.ok;
-  out.claude_cli_info = probe.ok ? probe.version : probe.error;
-  out.active_engine = await resolveEngine();
   ok(res, { settings: out });
+});
+
+// ───────────────────────── Fournisseurs IA (chaîne) ─────────────────────────
+api.get('/providers', async (req, res) => {
+  const probe = await claudeCliProbe(Boolean(req.query.reprobe));
+  ok(res, {
+    providers: providers.all().map(providers.publicView),
+    presets: providers.PRESETS,
+    claude_cli: { ok: probe.ok, info: probe.ok ? probe.version : probe.error },
+  });
+});
+
+api.post('/providers', (req, res) => {
+  const b = req.body || {};
+  const preset = b.preset ? providers.presetById(b.preset) : null;
+  if (!preset && !b.kind) return fail(res, 'Fournisseur inconnu');
+  const id = providers.create(b);
+  ok(res, { id });
+});
+
+api.put('/providers/:id', (req, res) => {
+  if (!providers.update(Number(req.params.id), req.body || {})) return fail(res, 'Fournisseur introuvable', 404);
+  ok(res, {});
+});
+
+api.delete('/providers/:id', (req, res) => {
+  providers.remove(Number(req.params.id));
+  ok(res, {});
+});
+
+api.post('/providers/:id/move', (req, res) => {
+  providers.move(Number(req.params.id), req.body?.dir === 'up' ? 'up' : 'down');
+  ok(res, {});
+});
+
+api.post('/providers/:id/reset', (req, res) => {
+  providers.resetHealth(Number(req.params.id));
+  ok(res, {});
+});
+
+// Test rapide : une classification bidon pour vérifier clé + endpoint.
+api.post('/providers/:id/test', async (req, res) => {
+  const p = providers.get(Number(req.params.id));
+  if (!p) return fail(res, 'Fournisseur introuvable', 404);
+  const probe = await claudeCliProbe();
+  if (!providers.isConfigured(p, probe.ok)) return fail(res, 'Fournisseur non configuré (clé, URL ou modèle manquant).');
+  const adapter = p.kind === 'claude_subscription' ? subscriptionAdapter
+    : p.kind === 'anthropic' ? anthropicAdapter : openaiCompat;
+  const filled = { ...p, api_key: providers.effectiveKey(p) };
+  try {
+    const r = await adapter.classify(filled, {
+      subject: 'Newsletter — soldes -50% cette semaine',
+      fromName: 'Promos', fromEmail: 'newsletter@example.com',
+      bodyText: 'Découvrez nos offres. Se désabonner en bas de page.', accountKind: 'pro',
+    });
+    providers.markOk(p.id);
+    ok(res, { message: `OK — a répondu (bruit=${r.isNoise}).` });
+  } catch (err) {
+    const { cooldownMs } = await import('./ai/errors.js');
+    providers.markCooldown(p.id, err.kind || 'error', err.message, cooldownMs(err));
+    fail(res, err.message || 'échec');
+  }
 });
 
 api.put('/settings', (req, res) => {

@@ -32,7 +32,9 @@ export async function processMessage(messageId) {
   let task = null;
 
   const obviousNoise = local.score >= OBVIOUS_NOISE_THRESHOLD;
-  const useAI = getSetting('ai_triage', '1') === '1' && (await aiAvailable());
+  // le seed de démonstration ne doit jamais consommer d'appel IA réel
+  const seedMode = process.env.AUTOMAIL_SEED === '1';
+  const useAI = !seedMode && getSetting('ai_triage', '1') === '1' && (await aiAvailable());
   if (useAI && local.source !== 'rule' && !obviousNoise) {
     const ai = await aiClassify({
       subject: msg.subject,

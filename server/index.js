@@ -5,6 +5,9 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { api } from './routes.js';
 import { startSyncLoop } from './imap.js';
+import { ensureDefaults } from './ai/providers.js';
+
+ensureDefaults();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();

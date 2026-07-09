@@ -1,71 +1,68 @@
-// Moteur « clé API » (Anthropic SDK). Voir engine.js pour le choix du moteur.
-import { getSetting } from '../db.js';
+// Adaptateur « Anthropic clé API » (SDK). Lève une ProviderError typée en cas
+// d'échec pour que le moteur cascade puisse basculer sur le fournisseur suivant.
+import { ProviderError } from './errors.js';
 import {
   classifySystem, classifyUser, draftSystem, draftUser,
   extractJson, normalizeClassification,
 } from './prompts.js';
 
-const CLASSIFY_MODEL = () =>
-  process.env.AUTOMAIL_CLASSIFY_MODEL || getSetting('classify_model') || 'claude-haiku-4-5';
-const DRAFT_MODEL = () =>
-  process.env.AUTOMAIL_DRAFT_MODEL || getSetting('draft_model') || 'claude-sonnet-5';
+const CLASSIFY_MODEL = (p) => p.model || process.env.AUTOMAIL_CLASSIFY_MODEL || 'claude-haiku-4-5';
+const DRAFT_MODEL = (p) => p.model || process.env.AUTOMAIL_DRAFT_MODEL || 'claude-sonnet-5';
 
-let _client = null;
-let _clientKey = null;
-
-export function apiKey() {
-  return process.env.ANTHROPIC_API_KEY || getSetting('anthropic_key') || '';
-}
-
-export function aiAvailable() {
-  return Boolean(apiKey());
-}
-
-async function client() {
-  const key = apiKey();
-  if (!key) return null;
-  if (_client && _clientKey === key) return _client;
+const clients = new Map();
+async function client(key) {
+  if (clients.has(key)) return clients.get(key);
   const { default: Anthropic } = await import('@anthropic-ai/sdk');
-  _client = new Anthropic({ apiKey: key });
-  _clientKey = key;
-  return _client;
+  const c = new Anthropic({ apiKey: key });
+  clients.set(key, c);
+  return c;
 }
 
-/**
- * Classification bruit + détection de tâche en un seul appel.
- * Retourne { isNoise, score, reason, task } ou null si indisponible/erreur.
- */
-export async function aiClassify({ subject, fromName, fromEmail, bodyText, accountKind }) {
-  const c = await client();
-  if (!c) return null;
+function mapError(err) {
+  const status = err?.status;
+  const msg = err?.message || 'erreur Anthropic';
+  if (status === 429) {
+    const ra = err?.headers?.['retry-after'];
+    return new ProviderError(msg, { kind: 'rate_limit', status, retryAfterMs: ra ? Number(ra) * 1000 : null });
+  }
+  if (status === 401 || status === 403) return new ProviderError(msg, { kind: 'auth', status });
+  if (status === 400 && /credit|balance|quota/i.test(msg)) return new ProviderError(msg, { kind: 'quota', status });
+  if (status >= 500 || status === 529) return new ProviderError(msg, { kind: 'unavailable', status });
+  return new ProviderError(msg, { kind: 'error', status });
+}
+
+export async function classify(provider, { subject, fromName, fromEmail, bodyText, accountKind }) {
+  const key = provider.api_key;
+  if (!key) throw new ProviderError('clé API manquante', { kind: 'auth' });
   try {
+    const c = await client(key);
     const res = await c.messages.create({
-      model: CLASSIFY_MODEL(),
+      model: CLASSIFY_MODEL(provider),
       max_tokens: 500,
       system: classifySystem(accountKind),
       messages: [{ role: 'user', content: classifyUser({ fromName, fromEmail, subject, bodyText }) }],
     });
     return normalizeClassification(extractJson(res.content.map((b) => b.text || '').join('')));
   } catch (err) {
-    console.error('[api] classification échouée:', err.message);
-    return null;
+    if (err instanceof ProviderError) throw err;
+    throw mapError(err);
   }
 }
 
-/** Brouillon de réponse avec contexte RAG. Retourne le texte ou null. */
-export async function aiDraftReply({ message, context, instructions, senderName }) {
-  const c = await client();
-  if (!c) return null;
+export async function draft(provider, { message, context, instructions, senderName }) {
+  const key = provider.api_key;
+  if (!key) throw new ProviderError('clé API manquante', { kind: 'auth' });
   try {
+    const c = await client(key);
     const res = await c.messages.create({
-      model: DRAFT_MODEL(),
+      model: DRAFT_MODEL(provider),
       max_tokens: 1200,
       system: draftSystem(senderName),
       messages: [{ role: 'user', content: draftUser({ message, context, instructions }) }],
     });
     return res.content.map((b) => b.text || '').join('').trim();
   } catch (err) {
-    console.error('[api] brouillon échoué:', err.message);
-    return null;
+    if (err instanceof ProviderError) throw err;
+    throw mapError(err);
   }
 }

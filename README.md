@@ -45,15 +45,23 @@ npm start        # sert l'interface et l'API sur http://localhost:4870
 
 Réglages → *Connecter une boîte* : serveur IMAP/SMTP, mot de passe (ou mot de passe d'application pour Gmail/iCloud), type pro/privé, et l'interrupteur « base RAG ». La synchronisation tourne ensuite toute seule (toutes les 3 min par défaut).
 
-### Moteur IA — trois options (Réglages → Intelligence)
+### Moteur IA — une chaîne de fournisseurs à bascule (Réglages → Intelligence)
 
-| Moteur | Ce qu'il faut | Coût |
-|---|---|---|
-| **Abonnement Claude** *(défaut)* | [Claude Code](https://code.claude.com) installé et connecté à votre compte (`claude` dans le terminal) | Inclus dans votre abonnement Claude Pro/Max — quota partagé avec claude.ai |
-| Clé API Anthropic | `ANTHROPIC_API_KEY` (`.env` ou Réglages) | Facturation à l'usage |
-| Heuristiques seules | Rien | Gratuit |
+Automail essaie vos fournisseurs IA **de haut en bas**. Dès qu'un fournisseur est à court de quota (limite atteinte, 429), sans crédit ou en erreur, il est mis en pause et Automail **bascule automatiquement sur le suivant** — puis retombe sur les heuristiques locales si toute la chaîne est épuisée. Vous réordonnez la chaîne pour choisir la priorité.
 
-Par défaut, Automail passe par Claude Code en mode headless : le tri, la détection de tâches et les brouillons consomment votre abonnement, sans clé API. **Réservé à un usage personnel sur votre machine** (conditions Anthropic) — pour déployer l'app ailleurs ou pour plusieurs utilisateurs, passez à la clé API. Pour économiser le quota, les cas évidents (lien de désabonnement, no-reply, règles apprises) sont tranchés localement sans appel IA ; seuls les mails ambigus remontent à Claude. Si Claude Code est introuvable, Automail se replie automatiquement sur la clé API si elle existe, sinon sur les heuristiques.
+Par défaut la chaîne contient un seul fournisseur, **l'abonnement Claude** (via [Claude Code](https://code.claude.com) installé et connecté à votre compte — aucune clé, usage personnel, quota partagé avec claude.ai). Vous ajoutez ensuite autant de fournisseurs que vous voulez, dont beaucoup offrent un **quota gratuit** — tous compatibles avec le même protocole OpenAI :
+
+| Fournisseur | Presets fournis (base URL + modèle par défaut, modifiables) |
+|---|---|
+| OpenAI · Mistral · Google Gemini · Groq · Cerebras · OpenRouter · Qwen (Alibaba) · NVIDIA NIM · Cloudflare Workers AI · Hugging Face | endpoint + modèle gratuit pré-remplis, lien pour obtenir la clé |
+| Anthropic (clé API) | Claude Haiku/Sonnet à l'usage |
+| Autre | n'importe quel endpoint `/chat/completions` compatible OpenAI |
+
+Il suffit de choisir un preset, coller sa clé, et le placer dans l'ordre voulu. Le bouton **Tester** vérifie clé + endpoint. Chaque fournisseur affiche son état (actif, en pause jusqu'à telle heure, quota épuisé, clé refusée).
+
+Pour économiser le quota, les cas évidents (lien de désabonnement, no-reply, règles apprises) sont tranchés localement sans aucun appel IA ; seuls les mails ambigus consomment un appel au premier fournisseur disponible.
+
+> **Usage personnel.** L'abonnement Claude est réservé à un usage local personnel (conditions Anthropic). Les quotas gratuits des autres fournisseurs relèvent de leurs propres conditions — ce sont vos comptes, vos clés.
 
 ### Autres réglages (`.env` ou Réglages)
 

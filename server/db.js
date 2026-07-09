@@ -99,6 +99,25 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT
 );
+
+-- chaîne de fournisseurs IA (ordonnée) avec bascule automatique
+CREATE TABLE IF NOT EXISTS providers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  kind TEXT NOT NULL,                          -- 'claude_subscription' | 'anthropic' | 'openai'
+  preset TEXT NOT NULL DEFAULT '',
+  base_url TEXT NOT NULL DEFAULT '',
+  api_key TEXT NOT NULL DEFAULT '',
+  model TEXT NOT NULL DEFAULT '',
+  enabled INTEGER NOT NULL DEFAULT 1,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  cooldown_until TEXT,
+  last_status TEXT NOT NULL DEFAULT 'unused',  -- 'ok'|'rate_limit'|'quota'|'auth'|'error'|'unused'
+  last_error TEXT NOT NULL DEFAULT '',
+  last_used_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_providers_order ON providers(sort_order);
 `);
 
 export function getSetting(key, fallback = null) {

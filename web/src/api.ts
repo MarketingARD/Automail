@@ -85,8 +85,45 @@ export type Stats = {
   rag: { scope: string; chunks: number; messages: number }[];
   ragUnique: number;
   ai: boolean;
-  aiEngine: 'subscription' | 'api' | null;
+  aiChain: ChainEntry[];
   clickup: boolean;
+};
+
+export type ChainEntry = {
+  id: number;
+  name: string;
+  kind: string;
+  preset: string;
+  status: string;
+  last_status: string;
+  last_error: string;
+  cooldown_until: string | null;
+};
+
+export type Provider = {
+  id: number;
+  name: string;
+  kind: 'claude_subscription' | 'anthropic' | 'openai';
+  preset: string;
+  base_url: string;
+  model: string;
+  enabled: number;
+  sort_order: number;
+  last_status: string;
+  last_error: string;
+  cooldown_until: string | null;
+  has_key: boolean;
+  key_from_env: boolean;
+};
+
+export type ProviderPreset = {
+  id: string;
+  label: string;
+  kind: string;
+  base_url: string;
+  model: string;
+  signup: string;
+  note: string;
 };
 
 class ApiError extends Error {}
