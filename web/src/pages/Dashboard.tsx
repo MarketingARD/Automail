@@ -134,7 +134,7 @@ export default function Dashboard({ stats, refresh }: { stats: Stats | null; ref
 
       {(!stats.ai || !stats.clickup) && (
         <div style={{ marginTop: 36, padding: '16px 20px', border: '1px solid var(--border)', color: 'var(--gray-dark)', fontSize: 13.5 }}>
-          {!stats.ai && <>Le tri fonctionne en mode heuristique. Ajoutez une clé Anthropic dans les <Link to="/settings" style={{ fontWeight: 600 }}>réglages</Link> pour un triage plus fin, la détection de tâches et les brouillons de réponse. </>}
+          {!stats.ai && <>Le tri fonctionne en mode heuristique. Installez Claude Code (abonnement) ou ajoutez une clé API dans les <Link to="/settings" style={{ fontWeight: 600 }}>réglages</Link> pour un triage plus fin, la détection de tâches et les brouillons de réponse. </>}
           {!stats.clickup && <>ClickUp n'est pas encore connecté.</>}
         </div>
       )}

@@ -5,9 +5,10 @@ import { Dot, Tag, Toggle, useToast } from '../ui';
 const COLORS = ['#F6A98C', '#E289BC', '#7B68D8'];
 
 type SettingsData = {
-  anthropic_key: string; classify_model: string; draft_model: string; ai_triage: string;
+  ai_engine: string; anthropic_key: string; classify_model: string; draft_model: string; ai_triage: string;
   clickup_token: string; clickup_list_id: string; clickup_list_name: string; user_name: string;
   env_anthropic: boolean; env_clickup: boolean;
+  claude_cli_ok: boolean; claude_cli_info: string; active_engine: string | null;
 };
 type Rule = { id: number; pattern: string; action: string; hits: number };
 type CuList = { id: string; name: string };
@@ -123,6 +124,35 @@ export default function Settings({ refreshStats }: { refreshStats: () => void })
       {/* ── IA ── */}
       <Section label="02 — Intelligence">
         <div className="card" style={{ padding: '24px 28px' }}>
+          <div className="field" style={{ marginBottom: 18 }}>
+            <label>Moteur IA</label>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
+              {[
+                { id: 'subscription', label: 'Abonnement Claude' },
+                { id: 'api', label: 'Clé API Anthropic' },
+                { id: 'off', label: 'Heuristiques seules' },
+              ].map((e) => (
+                <button
+                  key={e.id}
+                  className={`chip ${(settings.ai_engine || 'subscription') === e.id ? 'on' : ''}`}
+                  onClick={() => saveSettings({ ai_engine: e.id })}
+                >
+                  {e.label}
+                </button>
+              ))}
+            </div>
+            <div style={{ fontSize: 13, marginTop: 8, color: settings.active_engine ? 'var(--gray-dark)' : '#b3554e' }}>
+              {(settings.ai_engine || 'subscription') === 'subscription' && (
+                settings.claude_cli_ok
+                  ? <>✓ Claude Code détecté ({settings.claude_cli_info}) — le tri consomme votre abonnement Claude, aucune clé requise.</>
+                  : <>✗ Claude Code introuvable ({settings.claude_cli_info}). Installez-le puis connectez-vous (<code>claude</code> dans le terminal){settings.active_engine === 'api' ? ' — en attendant, repli sur votre clé API.' : ' — en attendant, tri heuristique.'}</>
+              )}
+              {settings.ai_engine === 'api' && (settings.active_engine === 'api'
+                ? '✓ Clé API configurée.'
+                : '✗ Aucune clé API — renseignez-la ci-dessous.')}
+              {settings.ai_engine === 'off' && 'Tri par règles locales et apprentissage de vos corrections uniquement.'}
+            </div>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
             <div className="field">
               <label>Clé API Anthropic {settings.env_anthropic && <em>(déjà fournie via .env)</em>}</label>
@@ -147,9 +177,10 @@ export default function Settings({ refreshStats }: { refreshStats: () => void })
             Triage IA des nouveaux mails (sinon : heuristiques locales uniquement)
           </label>
           <p style={{ fontSize: 13, color: 'var(--gray-dark)', marginTop: 14, lineHeight: 1.55, maxWidth: 640 }}>
-            Sans clé, Automail filtre avec des règles locales (désabonnement, no-reply, plateformes marketing…)
-            et apprend de chacune de vos corrections. Avec une clé, chaque mail est trié finement,
-            les tâches sont détectées et les brouillons s'appuient sur la base RAG.
+            Avec l'abonnement Claude, Automail passe par Claude Code installé sur votre machine :
+            usage personnel, quota partagé avec claude.ai. Pour économiser ce quota, les cas évidents
+            (désabonnement, no-reply, règles apprises) sont tranchés localement — seuls les mails ambigus
+            consomment un appel. Les brouillons de réponse s'appuient sur la base RAG quel que soit le moteur.
           </p>
         </div>
       </Section>

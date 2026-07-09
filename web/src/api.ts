@@ -85,6 +85,7 @@ export type Stats = {
   rag: { scope: string; chunks: number; messages: number }[];
   ragUnique: number;
   ai: boolean;
+  aiEngine: 'subscription' | 'api' | null;
   clickup: boolean;
 };
 

@@ -11,7 +11,7 @@ Pensée pour rester simple à tenir au quotidien : un chiffre, un bouton, boîte
 ## Ce qu'elle fait
 
 - **Multi-boîtes IMAP** — connectez autant de boîtes que vous voulez (pro ou privé), synchronisation automatique, tout arrive dans une boîte unifiée.
-- **Filtre à bruit** — chaque mail entrant est trié : *focus* ou *bruit*. Le triage combine des règles apprises, des heuristiques locales (désabonnement, no-reply, plateformes marketing…) et, si vous fournissez une clé Anthropic, une classification IA fine.
+- **Filtre à bruit** — chaque mail entrant est trié : *focus* ou *bruit*. Le triage combine des règles apprises, des heuristiques locales (désabonnement, no-reply, plateformes marketing…) et une classification IA fine — par défaut via **votre abonnement Claude** (Claude Code en local, aucune clé requise), ou via une clé API.
 - **Réversible, toujours** — un mail classé bruit se restaure en un clic ; un mail raté se marque en un clic. Chaque correction apprend une règle sur l'expéditeur : Automail ne refait pas deux fois la même erreur.
 - **Balayage en masse** — le bouton « Balayer tout le bruit » supprime tout le bruit d'un coup (localement et sur le serveur IMAP : corbeille si elle existe, sinon suppression), par boîte ou toutes boîtes confondues.
 - **Tâches ClickUp** — quand un mail contient une demande actionnable, Automail la détecte (titre, contexte, échéance) et la crée dans la liste ClickUp de votre choix en un clic.
@@ -45,17 +45,27 @@ npm start        # sert l'interface et l'API sur http://localhost:4870
 
 Réglages → *Connecter une boîte* : serveur IMAP/SMTP, mot de passe (ou mot de passe d'application pour Gmail/iCloud), type pro/privé, et l'interrupteur « base RAG ». La synchronisation tourne ensuite toute seule (toutes les 3 min par défaut).
 
-### Clés optionnelles (`.env` ou Réglages)
+### Moteur IA — trois options (Réglages → Intelligence)
+
+| Moteur | Ce qu'il faut | Coût |
+|---|---|---|
+| **Abonnement Claude** *(défaut)* | [Claude Code](https://code.claude.com) installé et connecté à votre compte (`claude` dans le terminal) | Inclus dans votre abonnement Claude Pro/Max — quota partagé avec claude.ai |
+| Clé API Anthropic | `ANTHROPIC_API_KEY` (`.env` ou Réglages) | Facturation à l'usage |
+| Heuristiques seules | Rien | Gratuit |
+
+Par défaut, Automail passe par Claude Code en mode headless : le tri, la détection de tâches et les brouillons consomment votre abonnement, sans clé API. **Réservé à un usage personnel sur votre machine** (conditions Anthropic) — pour déployer l'app ailleurs ou pour plusieurs utilisateurs, passez à la clé API. Pour économiser le quota, les cas évidents (lien de désabonnement, no-reply, règles apprises) sont tranchés localement sans appel IA ; seuls les mails ambigus remontent à Claude. Si Claude Code est introuvable, Automail se replie automatiquement sur la clé API si elle existe, sinon sur les heuristiques.
+
+### Autres réglages (`.env` ou Réglages)
 
 Copiez `.env.example` vers `.env` :
 
 | Variable | Rôle |
 |---|---|
-| `ANTHROPIC_API_KEY` | Triage IA fin, détection de tâches, brouillons de réponse |
+| `ANTHROPIC_API_KEY` | Moteur « clé API » (optionnel) |
 | `CLICKUP_TOKEN` | Création de tâches ClickUp (jeton personnel) |
 | `AUTOMAIL_SYNC_INTERVAL` | Intervalle de sync en secondes (défaut 180) |
 
-**Sans aucune clé, tout fonctionne** : le triage passe en mode heuristique + règles apprises, le RAG utilise un embedding local. Les clés ne font qu'affiner.
+**Sans abonnement ni clé, tout fonctionne** : le triage passe en mode heuristique + règles apprises, le RAG utilise un embedding local.
 
 ### Embeddings
 

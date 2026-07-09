@@ -4,7 +4,7 @@ import { syncAccount, deleteRemote, testConnection } from './imap.js';
 import { sendReply } from './smtp.js';
 import { processMessage, processPending } from './pipeline.js';
 import { learnFromOverride } from './ai/heuristics.js';
-import { aiDraftReply, aiAvailable } from './ai/claude.js';
+import { aiDraftReply, aiAvailable, resolveEngine, claudeCliProbe } from './ai/engine.js';
 import { search, contextFor, ragStats, indexMessage, removeFromIndex, matchClient } from './ai/rag.js';
 import { createTask, hierarchy, clickupConfigured } from './clickup.js';
 
@@ -18,7 +18,7 @@ const getAccount = (id) => db.prepare('SELECT * FROM accounts WHERE id = ?').get
 const getMessage = (id) => db.prepare('SELECT * FROM messages WHERE id = ?').get(id);
 
 // ───────────────────────── Stats / dashboard ─────────────────────────
-api.get('/stats', (req, res) => {
+api.get('/stats', async (req, res) => {
   const accounts = db
     .prepare(
       `SELECT a.*,
@@ -50,7 +50,8 @@ api.get('/stats', (req, res) => {
     sweptToday,
     rag: ragStats(),
     ragUnique,
-    ai: aiAvailable(),
+    ai: await aiAvailable(),
+    aiEngine: await resolveEngine(),
     clickup: clickupConfigured(),
   });
 });
@@ -319,7 +320,7 @@ api.post('/messages/:id/draft', async (req, res) => {
     senderName: account.name,
   });
   if (draft == null)
-    return fail(res, "Brouillon indisponible — ajoutez une clé Anthropic dans Réglages → Intelligence.", 503);
+    return fail(res, "Brouillon indisponible — configurez un moteur IA (abonnement Claude ou clé API) dans Réglages → Intelligence.", 503);
   ok(res, { draft, contextUsed: rag.results.length, scope: rag.scope });
 });
 
@@ -448,18 +449,23 @@ api.get('/rag/stats', (req, res) => ok(res, { stats: ragStats() }));
 
 // ───────────────────────── Réglages ─────────────────────────
 const SETTING_KEYS = [
-  'anthropic_key', 'classify_model', 'draft_model', 'ai_triage',
+  'ai_engine', 'anthropic_key', 'classify_model', 'draft_model', 'ai_triage',
   'clickup_token', 'clickup_list_id', 'clickup_list_name', 'user_name',
 ];
 
-api.get('/settings', (req, res) => {
+api.get('/settings', async (req, res) => {
   const out = {};
   for (const k of SETTING_KEYS) out[k] = getSetting(k, '');
+  if (!out.ai_engine) out.ai_engine = 'subscription';
   // ne jamais renvoyer les secrets en clair
   out.anthropic_key = out.anthropic_key ? '••••' + out.anthropic_key.slice(-4) : '';
   out.clickup_token = out.clickup_token ? '••••' + out.clickup_token.slice(-4) : '';
   out.env_anthropic = Boolean(process.env.ANTHROPIC_API_KEY);
   out.env_clickup = Boolean(process.env.CLICKUP_TOKEN);
+  const probe = await claudeCliProbe(Boolean(req.query.reprobe));
+  out.claude_cli_ok = probe.ok;
+  out.claude_cli_info = probe.ok ? probe.version : probe.error;
+  out.active_engine = await resolveEngine();
   ok(res, { settings: out });
 });
 

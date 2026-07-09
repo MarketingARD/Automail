@@ -5,9 +5,13 @@
 // 4. indexation RAG (si la boîte est opt-in et que ce n'est pas du bruit)
 import { db, getSetting } from './db.js';
 import { classifyLocal } from './ai/heuristics.js';
-import { aiClassify, aiAvailable } from './ai/claude.js';
+import { aiClassify, aiAvailable } from './ai/engine.js';
 import { matchClient, indexMessage } from './ai/rag.js';
 import { ruleFor } from './ai/heuristics.js';
+
+// Au-delà de ce score heuristique, le bruit est jugé certain : on ne dépense
+// pas d'appel IA (économise le quota d'abonnement / les crédits API).
+const OBVIOUS_NOISE_THRESHOLD = 0.75;
 
 export async function processMessage(messageId) {
   const msg = db.prepare('SELECT * FROM messages WHERE id = ?').get(messageId);
@@ -27,8 +31,9 @@ export async function processMessage(messageId) {
   let triage = local;
   let task = null;
 
-  const useAI = aiAvailable() && getSetting('ai_triage', '1') === '1';
-  if (useAI && local.source !== 'rule') {
+  const obviousNoise = local.score >= OBVIOUS_NOISE_THRESHOLD;
+  const useAI = getSetting('ai_triage', '1') === '1' && (await aiAvailable());
+  if (useAI && local.source !== 'rule' && !obviousNoise) {
     const ai = await aiClassify({
       subject: msg.subject,
       fromName: msg.from_name,
